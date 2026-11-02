@@ -3,6 +3,7 @@ import type { Scene, VideoProject, VisualKind } from "../types";
 type ProgressHandler = (value: number) => void;
 const W = 720;
 const H = 1280;
+const OUTPUT_SCALE = 1.5;
 
 interface VisualAsset { image: HTMLImageElement; credit: string; }
 
@@ -231,7 +232,9 @@ export async function renderProjectToWebM(project: VideoProject, canvas: HTMLCan
   if (!canvas.captureStream || typeof MediaRecorder === "undefined") throw new Error("Este navegador no permite exportar video desde Canvas. Prueba con Chrome actualizado.");
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("No se pudo iniciar el motor gráfico del navegador.");
-  canvas.width = W; canvas.height = H;
+  canvas.width = Math.round(W * OUTPUT_SCALE);
+  canvas.height = Math.round(H * OUTPUT_SCALE);
+  ctx.scale(OUTPUT_SCALE, OUTPUT_SCALE);
   const mimeType = ["video/webm;codecs=vp9", "video/webm;codecs=vp8", "video/webm"].find((type) => MediaRecorder.isTypeSupported(type));
   if (!mimeType) throw new Error("Este navegador no ofrece un formato de grabación compatible.");
   onProgress(1);
@@ -239,7 +242,7 @@ export async function renderProjectToWebM(project: VideoProject, canvas: HTMLCan
   onProgress(3);
   const stream = canvas.captureStream(30);
   const chunks: BlobPart[] = [];
-  const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 5_000_000 });
+  const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 6_000_000 });
   return new Promise<Blob>((resolve, reject) => {
     let animation = 0;
     const startedAt = performance.now();
