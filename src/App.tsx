@@ -133,7 +133,7 @@ export default function App() {
         </div>
 
         <div className="render-panel">
-          <div className="render-heading"><span className="step">03 / MOTION ENGINE</span><span className="format-pill">720 × 1280 · 30 FPS</span></div>
+          <div className="render-heading"><span className="step">03 / MOTION ENGINE</span><span className="format-pill">1080 × 1920 · 30 FPS</span></div>
           <h3>Produce your animated video</h3>
           <p>El motor crea fondos, movimiento, elementos gráficos y textos animados a partir de las escenas.</p>
           <canvas ref={canvasRef} className="render-canvas" aria-label="Vista previa de la animación generada" />
@@ -146,7 +146,7 @@ export default function App() {
             <video controls playsInline src={videoUrl} />
             <a className="download-link" href={videoUrl} download={`random-vid-${project.id}.webm`}>↓ Guardar video WebM</a>
           </div>}
-          <p className="microcopy">Primera versión: video animado sin narración ni música. La exportación depende de la compatibilidad del navegador; se genera en este dispositivo.</p>
+          <p className="microcopy">Primera versión: video animado sin narración ni música. Exportación vertical Full HD. La exportación depende de la compatibilidad del navegador; se genera en este dispositivo.</p>
         </div>
       </section>}
 
