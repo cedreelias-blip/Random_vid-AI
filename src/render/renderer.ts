@@ -6,8 +6,7 @@ const H = 1280;
 
 function roundedRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
   ctx.beginPath();
-  if ("roundRect" in ctx) ctx.roundRect(x, y, w, h, r);
-  else ctx.rect(x, y, w, h);
+  ctx.rect(x, y, w, h);
 }
 function wrapText(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, maxWidth: number, lineHeight: number) {
   const words = text.split(/\s+/);
