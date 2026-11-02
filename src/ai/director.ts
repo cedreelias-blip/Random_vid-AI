@@ -11,9 +11,11 @@ function chooseStyle(prompt: string, requested: VisualStyle): Exclude<VisualStyl
 
 function detectVisualKind(prompt: string): VisualKind {
   const value = prompt.toLowerCase();
+  // Specific subject terms must win over broad mission/space terms:
+  // "Apollo 11 computer vs smartphone" is a computer comparison, not a space scene.
+  if (/computer|processor|cpu|chip|guidance computer|memory|ram|semiconductor|technology/.test(value)) return "computer";
+  if (/phone|smartphone|mobile|iphone|android|touchscreen/.test(value)) return "phone";
   if (/apollo|moon|lunar|space|nasa|rocket|spacex|astronaut|planet|satellite/.test(value)) return "space";
-  if (/computer|processor|cpu|chip|apollo guidance|memory|ram|semiconductor|technology/.test(value)) return "computer";
-  if (/phone|smartphone|mobile|iphone|android| touchscreen/.test(value)) return "phone";
   if (/map|country|city|travel|location|route|border|geography/.test(value)) return "map";
   if (/history|ancient|century|war|historical|civilization|past/.test(value)) return "history";
   if (/science|physics|biology|atom|energy|experiment|climate/.test(value)) return "science";
