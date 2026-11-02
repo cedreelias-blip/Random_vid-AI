@@ -5,11 +5,14 @@ const W = 720;
 const H = 1280;
 
 interface VisualAsset { image: HTMLImageElement; credit: string; }
+
 async function loadVisualAssets(project: VideoProject): Promise<VisualAsset[]> {
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), 4500);
   try {
     const query = encodeURIComponent(project.prompt + " " + (project.scenes[0]?.visualKind ?? ""));
-    const endpoint = "https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrsearch=" + query + "&gsrnamespace=6&gsrlimit=6&prop=imageinfo&iiprop=url|extmetadata&iiurlwidth=1100&format=json&origin=*";
-    const response = await fetch(endpoint);
+    const endpoint = "https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrsearch=" + query + "&gsrnamespace=6&gsrlimit=4&prop=imageinfo&iiprop=url|extmetadata&iiurlwidth=900&format=json&origin=*";
+    const response = await fetch(endpoint, { signal: controller.signal });
     if (!response.ok) return [];
     const data = await response.json() as { query?: { pages?: Record<string, { imageinfo?: Array<{ thumburl?: string; extmetadata?: Record<string, { value?: string }> }> }> } };
     const pages = Object.values(data.query?.pages ?? {});
@@ -19,7 +22,15 @@ async function loadVisualAssets(project: VideoProject): Promise<VisualAsset[]> {
       const image = new Image();
       image.crossOrigin = "anonymous";
       image.src = info.thumburl;
-      try { await image.decode(); } catch { return null; }
+      try {
+        await Promise.race([
+          image.decode(),
+          new Promise<never>((_, reject) => window.setTimeout(() => reject(new Error("Image load timeout")), 3500))
+        ]);
+      } catch {
+        image.src = "";
+        return null;
+      }
       const artist = (info.extmetadata?.Artist?.value ?? "Wikimedia Commons").replace(/<[^>]*>/g, "").slice(0, 70);
       const license = (info.extmetadata?.LicenseShortName?.value ?? "license varies").replace(/<[^>]*>/g, "").slice(0, 30);
       return { image, credit: artist + " · " + license } as VisualAsset;
@@ -27,9 +38,10 @@ async function loadVisualAssets(project: VideoProject): Promise<VisualAsset[]> {
     return results.filter((item): item is VisualAsset => item !== null);
   } catch {
     return [];
+  } finally {
+    window.clearTimeout(timeout);
   }
 }
-
 function roundedRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
   ctx.beginPath();
   ctx.rect(x, y, w, h);
@@ -224,6 +236,7 @@ export async function renderProjectToWebM(project: VideoProject, canvas: HTMLCan
   if (!mimeType) throw new Error("Este navegador no ofrece un formato de grabación compatible.");
   onProgress(1);
   const assets = await loadVisualAssets(project);
+  onProgress(3);
   const stream = canvas.captureStream(30);
   const chunks: BlobPart[] = [];
   const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 5_000_000 });
