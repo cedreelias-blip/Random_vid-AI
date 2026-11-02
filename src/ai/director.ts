@@ -1,41 +1,65 @@
-import type { Scene, VideoProject, VisualStyle } from "../types";
+import type { Scene, VideoProject, VisualKind, VisualStyle } from "../types";
 
 function chooseStyle(prompt: string, requested: VisualStyle): Exclude<VisualStyle, "auto"> {
   if (requested !== "auto") return requested;
   const value = prompt.toLowerCase();
-  if (/space|spacex|nasa|ai|artificial intelligence|computer|technology|science|satellite/.test(value)) return "tech";
+  if (/space|spacex|nasa|apollo|moon|lunar|rocket|satellite|computer|technology|science|chip|phone|smartphone/.test(value)) return "tech";
   if (/history|documentary|true story|facts|explained/.test(value)) return "documentary";
   if (/mystery|horror|thriller|dramatic/.test(value)) return "cinematic";
   return "minimal";
 }
 
+function detectVisualKind(prompt: string): VisualKind {
+  const value = prompt.toLowerCase();
+  if (/apollo|moon|lunar|space|nasa|rocket|spacex|astronaut|planet|satellite/.test(value)) return "space";
+  if (/computer|processor|cpu|chip|apollo guidance|memory|ram|semiconductor|technology/.test(value)) return "computer";
+  if (/phone|smartphone|mobile|iphone|android| touchscreen/.test(value)) return "phone";
+  if (/map|country|city|travel|location|route|border|geography/.test(value)) return "map";
+  if (/history|ancient|century|war|historical|civilization|past/.test(value)) return "history";
+  if (/science|physics|biology|atom|energy|experiment|climate/.test(value)) return "science";
+  if (/data|statistics|comparison|versus| vs |speed|number|percentage|chart/.test(value)) return "data";
+  return "generic";
+}
+
+const sceneBeats = [
+  { title: "The surprising question", text: "LOOK CLOSER", visual: "A dramatic hero reveal introduces the subject with a moving focal object." },
+  { title: "The essential context", text: "THE BIG PICTURE", visual: "A wide composition establishes the subject and its scale." },
+  { title: "How it works", text: "INSIDE THE SYSTEM", visual: "A simplified animated breakdown reveals the key parts and connections." },
+  { title: "The key detail", text: "THE DETAIL THAT MATTERS", visual: "A close-up highlights one important feature with labels and callouts." },
+  { title: "The challenge", text: "THE BIG CHALLENGE", visual: "A visual contrast illustrates the limitation, risk, or turning point." },
+  { title: "What it means", text: "WHY IT MATTERS", visual: "A final composed reveal connects the details to the bigger story." }
+];
+
+const visualPlans: Record<VisualKind, string[]> = {
+  space: ["A planet or Moon rises behind a moving spacecraft silhouette.", "A star map and orbital path establish the mission's destination.", "A spacecraft schematic separates the major stages and components.", "A lunar surface close-up uses a moving lander silhouette and altitude markers.", "A warning panel and trajectory line show the mission's critical moment.", "The Moon, Earth, and spacecraft align in a final orbital composition."],
+  computer: ["A glowing processor package appears with animated circuit traces.", "A scale comparison introduces the machine and its era.", "A chip diagram reveals memory, processing, and input-output blocks.", "A close-up memory grid lights up cell by cell.", "A performance meter contrasts constraints and capability.", "A processor outline resolves into a clean technical hero shot."],
+  phone: ["A smartphone silhouette rotates into view with a bright screen reveal.", "A size comparison places the device beside familiar objects.", "Layered phone components separate into a clean exploded view.", "A close-up highlights the screen, camera, or chip area.", "A battery or performance meter shows the trade-off.", "The phone returns as a polished product-style hero shot."],
+  map: ["A globe rotates and zooms toward the story's region.", "A map grid reveals the wider geographic context.", "A route draws itself between highlighted locations.", "A map pin and callout spotlight the key place.", "Two map regions compare distance, scale, or boundaries.", "The route and destination settle into a final map composition."],
+  history: ["A timeline marker emerges from a textured archival-style background.", "A dated timeline establishes the era and context.", "An illustrated artifact or landmark appears in layered perspective.", "A close-up frame highlights the pivotal detail.", "A timeline branches to show the turning point and consequence.", "The timeline resolves on the event's lasting significance."],
+  science: ["A glowing scientific object appears as a dramatic macro reveal.", "A labeled scale or environment establishes the phenomenon.", "Animated particles and connected diagrams explain the process.", "A magnified detail reveals the underlying mechanism.", "A measurement gauge visualizes the challenge or limit.", "The phenomenon resolves into a clear explanatory diagram."],
+  data: ["A bold number counter introduces the central comparison.", "Two metric cards slide into a side-by-side comparison.", "An animated chart builds from axes to data bars.", "A highlighted data point expands with a callout.", "A gauge compares the two outcomes.", "A final comparison graphic summarizes the takeaway."],
+  generic: ["A bold central object emerges from a moving spotlight.", "A layered composition introduces the subject and context.", "Connected cards reveal the main parts of the idea.", "A close-up panel highlights the most interesting detail.", "A split-screen contrast shows the central tension.", "A clean final graphic reinforces the takeaway."]
+};
+
 function splitIntoScenes(prompt: string, count: number): Scene[] {
-  const beats = [
-    ["The hook", "Open with the most surprising visual. Establish the central question.", "A bold opening image with a slow push-in."],
-    ["The big idea", "Introduce the subject clearly and show why it matters.", "A clean visual reveal with a subtle camera move."],
-    ["How it works", "Break the concept into a simple visual explanation.", "A sequence of labeled parts, lines, and animated connections."],
-    ["The detail", "Highlight one concrete fact or unexpected detail.", "A close-up technical or documentary-style visual."],
-    ["The challenge", "Show the limitation, risk, or unanswered question.", "A restrained visual contrast with a measured zoom."],
-    ["The takeaway", "End with the central implication and a memorable final image.", "A composed closing frame with the key idea."]
-  ];
+  const kind = detectVisualKind(prompt);
   return Array.from({ length: count }, (_, index) => {
-    const beat = beats[index % beats.length];
+    const beat = sceneBeats[index % sceneBeats.length];
+    const plan = visualPlans[kind][index % visualPlans[kind].length];
     return {
       id: `scene-${index + 1}`,
-      title: beat[0],
-      narration: index === 0 ? `What if this changes everything? ${prompt.trim()}` : beat[1],
-      visual: beat[2],
-      onScreenText: beat[0].toUpperCase(),
+      title: beat.title,
+      narration: index === 0 ? `What makes this story so surprising? ${prompt.trim()}` : beat.title + ". " + beat.visual,
+      visual: plan,
+      visualKind: kind,
+      onScreenText: beat.text,
       duration: 8,
       transition: index === 0 ? "fade" : index % 2 ? "cut" : "zoom"
     };
   });
 }
 
-/**
- * Offline fallback director. This creates a storyboard template, not a factual
- * research result or a finished AI-generated video.
- */
+/** Offline visual director: creates topic-aware storyboard directions without claiming factual research. */
 export function createLocalProject(prompt: string, options?: {
   style?: VisualStyle;
   duration?: number;
