@@ -148,43 +148,38 @@ function drawVisual(ctx: CanvasRenderingContext2D, kind: VisualKind | undefined,
   }
 }
 function drawFrame(ctx: CanvasRenderingContext2D, project: VideoProject, elapsed: number) {
-  const total = project.duration;
-  const sceneIndex = Math.min(project.scenes.length - 1, Math.floor((elapsed / total) * project.scenes.length));
-  const scene: Scene = project.scenes[sceneIndex];
-  const localProgress = (elapsed / total) * project.scenes.length - sceneIndex;
-  const accent = project.style === "cinematic" ? "#ff766e" : project.style === "documentary" ? "#e8c878" : "#70e4dc";
-  const bg = ctx.createLinearGradient(0, 0, W, H);
-  bg.addColorStop(0, "#101b2c"); bg.addColorStop(0.55, "#080d17"); bg.addColorStop(1, "#05070c");
-  ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+  const total=project.duration, sceneIndex=Math.min(project.scenes.length-1,Math.floor(elapsed/total*project.scenes.length));
+  const scene:Scene=project.scenes[sceneIndex], localProgress=elapsed/total*project.scenes.length-sceneIndex;
+  const accent=project.style==="cinematic"?"#ff766e":project.style==="documentary"?"#e8c878":"#70e4dc";
+  const kind=scene.visualKind??"generic", ease=1-Math.pow(1-Math.min(1,localProgress),3);
+  const camera=.96+ease*.055+Math.sin(elapsed*.7)*.008;
+  const bg=ctx.createLinearGradient(0,0,W,H); bg.addColorStop(0,"#101d30"); bg.addColorStop(.48,"#080e19"); bg.addColorStop(1,"#03060c");
+  ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);
+  const glow=ctx.createRadialGradient(360+Math.sin(elapsed*.22)*150,390,10,360,420,620);
+  glow.addColorStop(0,accent+"24");glow.addColorStop(1,"#05070c00");ctx.fillStyle=glow;ctx.fillRect(0,0,W,850);
+  ctx.save();ctx.globalAlpha=.09;ctx.strokeStyle=accent;ctx.lineWidth=1;const shift=elapsed*9%72;
+  for(let x=-72+shift;x<W+72;x+=72){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x-170,850);ctx.stroke();}
+  for(let y=0;y<850;y+=72){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}ctx.restore();
+  ctx.save();ctx.translate(W/2,390);ctx.scale(camera,camera);ctx.translate(-W/2,-390);drawVisual(ctx,kind,elapsed,accent,localProgress);ctx.restore();
 
-  ctx.save(); ctx.globalAlpha = 0.12; ctx.strokeStyle = accent; ctx.lineWidth = 1;
-  const shift = (elapsed * 12) % 64;
-  for (let x = -64 + shift; x < W + 64; x += 64) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x - 120, H); ctx.stroke(); }
-  for (let y = 0; y < H; y += 64) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
-  ctx.restore();
+  const labels:Record<string,string[]>={computer:["PROCESSING UNIT","MEMORY SYSTEM","INPUT / OUTPUT"],phone:["MOBILE COMPUTING","INTEGRATED DESIGN","REAL-TIME SYSTEM"],space:["MISSION PROFILE","FLIGHT PATH","CRITICAL SYSTEMS"],map:["LOCATION","ROUTE ANALYSIS","GEOGRAPHIC CONTEXT"],history:["TIMELINE","KEY EVENT","HISTORICAL CONTEXT"],science:["OBSERVATION","MECHANISM","MEASUREMENT"],data:["BASELINE","COMPARISON","RESULT"]};
+  const tags=labels[kind]??["OVERVIEW","KEY DETAIL","TAKEAWAY"], active=Math.min(2,Math.floor(localProgress*3));
+  ctx.save();ctx.fillStyle="#091421dd";ctx.strokeStyle=accent+"88";ctx.lineWidth=1.5;roundedRect(ctx,42,626,636,82,18);ctx.fill();ctx.stroke();
+  for(let i=0;i<3;i++){const x=62+i*210;ctx.fillStyle=i===active?accent:"#71849b";ctx.beginPath();ctx.arc(x,651,5,0,Math.PI*2);ctx.fill();ctx.fillStyle=i===active?"#f4f8ff":"#91a0b4";ctx.font="600 12px Arial";ctx.textAlign="left";ctx.fillText(tags[i],x+13,655);if(i<2)line(ctx,x+13,675,x+174,675,"#26394c",2);}ctx.restore();
 
-  drawVisual(ctx, scene.visualKind, elapsed, accent, localProgress);
-
-  ctx.fillStyle = accent; ctx.font = "600 19px Arial"; ctx.fillText("RANDOM_VID  /  TOPIC VISUALS", 52, 82);
-  ctx.fillStyle = "#8292a8"; ctx.font = "16px Arial";
-  ctx.fillText(`SCENE ${String(sceneIndex + 1).padStart(2, "0")}  /  ${String(project.scenes.length).padStart(2, "0")}`, 52, 119);
-  roundedRect(ctx, 52, 145, 616, 5, 2); ctx.fillStyle = "#283648"; ctx.fill();
-  roundedRect(ctx, 52, 145, 616 * ((sceneIndex + localProgress) / project.scenes.length), 5, 2); ctx.fillStyle = accent; ctx.fill();
-
-  ctx.fillStyle = accent; ctx.font = "600 17px Arial";
-  wrapText(ctx, scene.title.toUpperCase(), 52, 790, 610, 25);
-  ctx.fillStyle = "#f4f7fb"; ctx.font = "700 48px Arial";
-  wrapText(ctx, scene.onScreenText || scene.title.toUpperCase(), 52, 860, 610, 58);
-  ctx.fillStyle = "#aeb9c8"; ctx.font = "21px Arial";
-  wrapText(ctx, scene.visual, 52, 1015, 600, 30);
-
-  ctx.fillStyle = "#77869a"; ctx.font = "16px Arial";
-  ctx.fillText("A STORY IN MOTION", 52, 1190);
-  ctx.fillText(`${Math.floor(elapsed).toString().padStart(2, "0")}s  /  ${total}s`, 570, 1190);
-  const fade = Math.min(1, localProgress * 5 + 0.15);
-  ctx.fillStyle = `rgba(5, 8, 14, ${Math.max(0, 0.16 - fade * 0.16)})`; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle=accent;ctx.font="700 18px Arial";ctx.fillText("RANDOM_VID  /  FIELD NOTES",48,66);
+  ctx.fillStyle="#8292a8";ctx.font="14px Arial";ctx.fillText(kind.toUpperCase()+"  •  VISUAL STORY",48,94);
+  ctx.textAlign="right";ctx.fillText(String(sceneIndex+1).padStart(2,"0")+" / "+String(project.scenes.length).padStart(2,"0"),672,66);ctx.textAlign="left";
+  ctx.fillStyle="#263648";roundedRect(ctx,48,116,624,4,2);ctx.fill();ctx.fillStyle=accent;roundedRect(ctx,48,116,624*((sceneIndex+localProgress)/project.scenes.length),4,2);ctx.fill();
+  const panel=ctx.createLinearGradient(0,748,0,1160);panel.addColorStop(0,"#0b1422ee");panel.addColorStop(1,"#070b13f5");
+  ctx.fillStyle=panel;roundedRect(ctx,34,748,652,402,26);ctx.fill();ctx.strokeStyle="#ffffff18";ctx.lineWidth=1;ctx.stroke();
+  ctx.fillStyle=accent;ctx.font="700 16px Arial";wrapText(ctx,scene.title.toUpperCase(),62,798,590,23);
+  ctx.fillStyle="#f5f7fb";ctx.font="700 43px Arial";wrapText(ctx,scene.onScreenText||scene.title.toUpperCase(),62,870,590,52);
+  ctx.fillStyle="#aebdce";ctx.font="20px Arial";wrapText(ctx,scene.visual,62,1002,585,29);
+  ctx.fillStyle="#243448";roundedRect(ctx,62,1090,590,3,2);ctx.fill();ctx.fillStyle=accent;roundedRect(ctx,62,1090,590*Math.max(.04,localProgress),3,2);ctx.fill();
+  ctx.fillStyle="#8292a8";ctx.font="14px Arial";ctx.fillText("A STORY IN MOTION",48,1205);ctx.textAlign="right";ctx.fillText(Math.floor(elapsed).toString().padStart(2,"0")+"s / "+total+"s",672,1205);ctx.textAlign="left";
+  const flash=Math.max(0,1-localProgress*7);if(flash>0){ctx.fillStyle="rgba(225,240,255,"+(flash*.12)+")";ctx.fillRect(0,0,W,H);}
 }
-
 export async function renderProjectToWebM(project: VideoProject, canvas: HTMLCanvasElement, onProgress: ProgressHandler = () => undefined): Promise<Blob> {
   if (!canvas.captureStream || typeof MediaRecorder === "undefined") throw new Error("Este navegador no permite exportar video desde Canvas. Prueba con Chrome actualizado.");
   const ctx = canvas.getContext("2d");
