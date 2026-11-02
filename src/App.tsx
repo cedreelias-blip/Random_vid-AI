@@ -1,5 +1,6 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { createLocalProject } from "./ai/director";
+import { renderProjectToWebM } from "./render/renderer";
 import { loadProjects, saveProject } from "./storage/projects";
 import type { VideoProject, VisualStyle } from "./types";
 
@@ -19,6 +20,10 @@ export default function App() {
   const [project, setProject] = useState<VideoProject | null>(null);
   const [projects, setProjects] = useState<VideoProject[]>(() => loadProjects());
   const [notice, setNotice] = useState("");
+  const [rendering, setRendering] = useState(false);
+  const [renderProgress, setRenderProgress] = useState(0);
+  const [videoUrl, setVideoUrl] = useState("");
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const sceneTotal = useMemo(() => project?.scenes.reduce((sum, scene) => sum + scene.duration, 0) ?? 0, [project]);
 
@@ -27,16 +32,37 @@ export default function App() {
       setNotice("Escribe una idea un poco más detallada (mínimo 8 caracteres).");
       return;
     }
+    if (videoUrl) URL.revokeObjectURL(videoUrl);
+    setVideoUrl("");
     const next = createLocalProject(prompt, { style, duration, language });
     setProject(next);
     setProjects(saveProject(next));
-    setNotice("Storyboard inicial creado y guardado en este dispositivo.");
+    setNotice("Storyboard inicial creado. Ya puedes producir una primera animación.");
   }
 
   function openProject(item: VideoProject) {
     setProject(item);
     setPrompt(item.prompt);
+    setVideoUrl("");
     setNotice("Proyecto cargado.");
+  }
+
+  async function renderVideo() {
+    if (!project || !canvasRef.current || rendering) return;
+    setRendering(true);
+    setRenderProgress(0);
+    setNotice("Produciendo animación. Mantén esta pestaña abierta hasta terminar.");
+    try {
+      const blob = await renderProjectToWebM(project, canvasRef.current, setRenderProgress);
+      const nextUrl = URL.createObjectURL(blob);
+      if (videoUrl) URL.revokeObjectURL(videoUrl);
+      setVideoUrl(nextUrl);
+      setNotice("¡Video animado listo! Puedes reproducirlo o guardarlo.");
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "No se pudo exportar el video.");
+    } finally {
+      setRendering(false);
+    }
   }
 
   return (
@@ -85,7 +111,7 @@ export default function App() {
         </div>
 
         <button className="generate-button" onClick={generate}><span>✳</span> Create my video plan <b>↗</b></button>
-        <p className="microcopy">Primera fase: director y storyboard local. No requiere API ni servicios de pago.</p>
+        <p className="microcopy">Director local y storyboard. No requiere API ni servicios de pago.</p>
         {notice && <p className="notice" role="status">{notice}</p>}
       </section>
 
@@ -105,11 +131,27 @@ export default function App() {
             </div>
           </article>)}
         </div>
-        <div className="export-note"><span className="export-icon">↗</span><div><b>Storyboard ready</b><p>Esta versión organiza escenas e ideas. La generación de imágenes, animaciones y exportación MP4 se incorporará en las siguientes fases.</p></div></div>
+
+        <div className="render-panel">
+          <div className="render-heading"><span className="step">03 / MOTION ENGINE</span><span className="format-pill">720 × 1280 · 30 FPS</span></div>
+          <h3>Produce your animated video</h3>
+          <p>El motor crea fondos, movimiento, elementos gráficos y textos animados a partir de las escenas.</p>
+          <canvas ref={canvasRef} className="render-canvas" aria-label="Vista previa de la animación generada" />
+          <button className="generate-button render-button" onClick={renderVideo} disabled={rendering}>
+            {rendering ? `Produciendo… ${renderProgress}%` : "Render animated video"}
+            <b>{rendering ? "◌" : "↗"}</b>
+          </button>
+          {rendering && <div className="progress-track"><span style={{ width: `${renderProgress}%` }} /></div>}
+          {videoUrl && <div className="video-result">
+            <video controls playsInline src={videoUrl} />
+            <a className="download-link" href={videoUrl} download={`random-vid-${project.id}.webm`}>↓ Guardar video WebM</a>
+          </div>}
+          <p className="microcopy">Primera versión: video animado sin narración ni música. La exportación depende de la compatibilidad del navegador; se genera en este dispositivo.</p>
+        </div>
       </section>}
 
       <section className="library-section">
-        <div className="section-heading"><div><span className="step">03 / LIBRARY</span><h2>Your projects</h2></div><span className="count">{projects.length} SAVED</span></div>
+        <div className="section-heading"><div><span className="step">04 / LIBRARY</span><h2>Your projects</h2></div><span className="count">{projects.length} SAVED</span></div>
         {projects.length === 0 ? <p className="empty-state">Tus proyectos aparecerán aquí cuando crees el primero.</p> : <div className="project-list">
           {projects.map((item) => <button className="project-item" key={item.id} onClick={() => openProject(item)}><span className="project-dot">▶</span><span><b>{item.title}</b><small>{new Date(item.createdAt).toLocaleDateString()} · {item.duration}s · {item.style}</small></span><span className="project-arrow">↗</span></button>)}
         </div>}
